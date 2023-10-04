@@ -17,12 +17,15 @@
 // @ is an alias to /src
 import portfolio from '@/data/portfolioItems';
 
+import gsap from 'gsap';
+
 export default {
   name: 'HomeView',
   components: {
   },
   data() {
     return {
+      counter: 0,
       mediaPlayer: null,
     };
   },
@@ -34,38 +37,58 @@ export default {
         this.mediaPlayer.setAttribute('height', item.height);
         this.mediaPlayer.setAttribute('width', item.width);
         this.mediaPlayer.setAttribute('frameBorder', 0);
+        this.mediaPlayer.setAttribute('id', 'mediaPlayer');
+        this.$refs.mediaHolder.style.marginTop = item.heightOffset;
+        this.$refs.mediaHolder.appendChild(this.mediaPlayer);
+      }
+      if (item.type === 'Video') {
+        // alert('boo!');
+        this.mediaPlayer = document.createElement('video');
+        this.mediaPlayer.setAttribute('src', item.source);
+        this.mediaPlayer.setAttribute('height', item.height);
+        this.mediaPlayer.setAttribute('width', item.width);
+        this.mediaPlayer.setAttribute('id', 'mediaPlayer');
+        // this.mediaPlayer.setAttribute('muted', true);
+        // this.mediaPlayer.setAttribute('autoplay', true);
+        this.mediaPlayer.muted = true;
+        this.mediaPlayer.autoplay = true;
+        this.$refs.mediaHolder.style.marginTop = item.heightOffset;
         this.$refs.mediaHolder.appendChild(this.mediaPlayer);
       }
     },
-    runPortfolio() {
-      console.log(portfolio);
-      // console.log(this.$refs.title.innerHTML);
-      let counter = 0;
-      this.$refs.title.innerHTML = portfolio[counter].name;
-      this.$refs.description.innerHTML = portfolio[counter].description;
-      this.checkAndSetMediaPlayer(portfolio[counter]);
-      counter += 1;
-      // set Initial value
-      setInterval(() => {
-        // tear down previous work
-        this.mediaPlayer.remove();
+    async slideTimeline(item) {
+      // eslint-disable-next-line new-cap
+      const subTL = new gsap.timeline();
+      subTL.to('.home', { autoAlpha: 0, duration: 0.5, ease: 'power1.easeOut' }, 0);
+      subTL.call(() => {
+        if (this.mediaPlayer) this.mediaPlayer.remove();
         this.mediaPlayer = null;
-        // Set title and description
-        this.$refs.title.innerHTML = portfolio[counter].name;
-        this.$refs.description.innerHTML = portfolio[counter].description;
-        // actually mount the bloody work
-        this.checkAndSetMediaPlayer(portfolio[counter]);
-
-        // use counter to loop around array.
-        counter += 1;
-        if (counter > portfolio.length - 1) {
-          counter = 0;
-        }
-      }, (portfolio[counter].time * 1000 + 2000));
+      }, null, '+=0');
+      subTL.call(() => {
+        this.$refs.title.innerHTML = item.name;
+        this.$refs.description.innerHTML = item.description;
+        this.checkAndSetMediaPlayer(item);
+      }, null, '+=0');
+      subTL.to('.home', { autoAlpha: 1, duration: 0.5, ease: 'power1.easeOut' }, '+=0');
+      subTL.addLabel('nextSlide', item.time + 2);
+      subTL.call(() => {
+        console.log('complete');
+      }, null, 'nextSlide');
+    },
+    async masterLoop() {
+      this.slideTimeline(portfolio[this.counter]);
+      setTimeout(() => {
+        this.incrementCounterAndGoAgain();
+      }, (portfolio[this.counter].time + 3) * 1000);
+    },
+    async incrementCounterAndGoAgain() {
+      this.counter += 1;
+      if (this.counter > portfolio.length - 1) this.counter = 0;
+      await this.masterLoop();
     },
   },
   mounted() {
-    this.runPortfolio();
+    this.masterLoop();
   },
 };
 </script>
@@ -75,8 +98,8 @@ export default {
   display: flex;
   flex-direction: column;
   max-width: 1200px;
-  /* align-items: center; */
   margin: 0 auto;
+  opacity: 0;
 }
 
 #logo {
@@ -106,6 +129,13 @@ export default {
 
 #description {
   font-size: 24px;
+}
+
+#mediaHolder {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
 }
 
 </style>
